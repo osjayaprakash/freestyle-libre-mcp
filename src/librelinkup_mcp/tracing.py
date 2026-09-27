@@ -38,7 +38,7 @@ def configure(settings: Settings, *, client: Any | None = None) -> None:
         except ImportError:
             log.warning(
                 "LANGFUSE_* keys are set but the 'langfuse' package is not installed; "
-                "tracing is disabled. Install with: pip install 'librelinkup-mcp[langfuse]'"
+                "tracing is disabled. Install with: pip install 'freestyle-libre-mcp[langfuse]'"
             )
             return
         client = get_client()

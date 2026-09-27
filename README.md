@@ -1,4 +1,4 @@
-# librelinkup-mcp
+# freestyle-libre-mcp
 
 An MCP server that gives Claude (or any MCP client) read-only access to FreeStyle Libre
 CGM glucose readings shared through LibreLinkUp. It talks to the LibreLinkUp API with its
@@ -31,7 +31,7 @@ You need a LibreLinkUp **follower** account: invite it from the LibreLink app, a
 invite in the LibreLinkUp app, and accept any terms there before using this server.
 
 ```bash
-git clone <this repo> && cd librelinkup-mcp
+git clone https://github.com/osjayaprakash/freestyle-libre-mcp.git && cd freestyle-libre-mcp
 uv sync
 ```
 
@@ -52,7 +52,7 @@ Add to `claude_desktop_config.json`:
   "mcpServers": {
     "librelinkup": {
       "command": "uv",
-      "args": ["--directory", "/absolute/path/to/librelinkup-mcp", "run", "librelinkup-mcp"],
+      "args": ["--directory", "/absolute/path/to/freestyle-libre-mcp", "run", "freestyle-libre-mcp"],
       "env": {
         "LIBRELINKUP_EMAIL": "you@example.com",
         "LIBRELINKUP_PASSWORD": "your-password",
@@ -70,7 +70,7 @@ claude mcp add librelinkup \
   -e LIBRELINKUP_EMAIL=you@example.com \
   -e LIBRELINKUP_PASSWORD=your-password \
   -e LIBRELINKUP_REGION=US \
-  -- uv --directory /absolute/path/to/librelinkup-mcp run librelinkup-mcp
+  -- uv --directory /absolute/path/to/freestyle-libre-mcp run freestyle-libre-mcp
 ```
 
 ## Langfuse tracing (optional)
@@ -82,8 +82,8 @@ Install the extra and set the keys:
 uv sync --extra langfuse
 ```
 
-In the server command, use `run --extra langfuse librelinkup-mcp` instead of
-`run librelinkup-mcp`.
+In the server command, use `run --extra langfuse freestyle-libre-mcp` instead of
+`run freestyle-libre-mcp`.
 
 | Variable | Meaning |
 |---|---|

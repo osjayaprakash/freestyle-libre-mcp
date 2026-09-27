@@ -1,5 +1,5 @@
 [project]
-name = "librelinkup-mcp"
+name = "freestyle-libre-mcp"
 version = "0.1.0"
 description = "MCP server exposing FreeStyle Libre glucose readings from LibreLinkUp"
 readme = "README.md"
@@ -10,11 +10,15 @@ dependencies = [
     "pydantic>=2.12,<3",
 ]
 
+[project.urls]
+Homepage = "https://github.com/osjayaprakash/freestyle-libre-mcp"
+Issues = "https://github.com/osjayaprakash/freestyle-libre-mcp/issues"
+
 [project.optional-dependencies]
 langfuse = ["langfuse>=4,<5"]
 
 [project.scripts]
-librelinkup-mcp = "librelinkup_mcp.server:main"
+freestyle-libre-mcp = "librelinkup_mcp.server:main"
 
 [dependency-groups]
 dev = [
