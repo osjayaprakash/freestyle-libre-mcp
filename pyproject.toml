@@ -4,6 +4,15 @@ version = "0.1.0"
 description = "MCP server exposing FreeStyle Libre glucose readings from LibreLinkUp"
 readme = "README.md"
 requires-python = ">=3.11"
+keywords = ["mcp", "freestyle-libre", "librelinkup", "cgm", "glucose", "diabetes"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+]
 dependencies = [
     "httpx2>=2.5,<3",
     "mcp>=2.2,<3",
@@ -12,6 +21,7 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://github.com/osjayaprakash/freestyle-libre-mcp"
+Documentation = "https://freestyle-libre-mcp.readthedocs.io"
 Issues = "https://github.com/osjayaprakash/freestyle-libre-mcp/issues"
 
 [project.optional-dependencies]

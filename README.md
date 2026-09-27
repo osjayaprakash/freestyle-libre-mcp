@@ -24,8 +24,9 @@ phone is out of range.
 
 ## Setup
 
-For a step-by-step guide, including account setup and troubleshooting, see
-[INSTALL.md](INSTALL.md).
+For a step-by-step guide, including account setup and troubleshooting, see the
+[installation guide](https://freestyle-libre-mcp.readthedocs.io/en/latest/install/).
+Full documentation is at <https://freestyle-libre-mcp.readthedocs.io>.
 
 You need a LibreLinkUp **follower** account: invite it from the LibreLink app, accept the
 invite in the LibreLinkUp app, and accept any terms there before using this server.
@@ -42,6 +43,29 @@ uv sync
 | `LIBRELINKUP_REGION` | no | `US` | One of `US`, `EU`, `EU2`, `AE`, `AP`, `AU`, `CA`, `DE`, `FR`, `JP`, `LA`, `RU` |
 
 If the region is wrong, the first tool call tells you which one to set.
+
+### Run from PyPI
+
+No clone needed; [uv](https://docs.astral.sh/uv/) fetches and runs the published package:
+
+```bash
+uvx freestyle-libre-mcp
+```
+
+In a client config, use `"command": "uvx", "args": ["freestyle-libre-mcp"]`.
+
+### Run with Docker
+
+The server speaks MCP over stdio, so keep `-i`:
+
+```bash
+docker run -i --rm \
+  -e LIBRELINKUP_EMAIL -e LIBRELINKUP_PASSWORD -e LIBRELINKUP_REGION \
+  ghcr.io/osjayaprakash/freestyle-libre-mcp:latest
+```
+
+In a client config, use `"command": "docker"` with those arguments, and pass the
+variables through the client's `env` block.
 
 ### Claude Desktop
 
