@@ -1,5 +1,7 @@
 # freestyle-libre-mcp
 
+<!-- mcp-name: io.github.osjayaprakash/freestyle-libre-mcp -->
+
 [![CI](https://github.com/osjayaprakash/freestyle-libre-mcp/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/osjayaprakash/freestyle-libre-mcp/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/freestyle-libre-mcp)](https://pypi.org/project/freestyle-libre-mcp/)
 [![Python](https://img.shields.io/pypi/pyversions/freestyle-libre-mcp)](https://pypi.org/project/freestyle-libre-mcp/)

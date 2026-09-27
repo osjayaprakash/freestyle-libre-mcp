@@ -13,6 +13,8 @@ RUN uv sync --frozen --no-dev --no-editable --extra langfuse
 
 FROM python:3.12-slim-bookworm
 
+LABEL io.modelcontextprotocol.server.name="io.github.osjayaprakash/freestyle-libre-mcp"
+
 RUN useradd --create-home app
 COPY --from=build /app/.venv /app/.venv
 USER app

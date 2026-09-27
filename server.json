@@ -1,0 +1,69 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.osjayaprakash/freestyle-libre-mcp",
+  "title": "FreeStyle Libre (LibreLinkUp)",
+  "description": "Read-only FreeStyle Libre CGM glucose readings, graphs and logbook via LibreLinkUp",
+  "websiteUrl": "https://freestyle-libre-mcp.readthedocs.io",
+  "repository": {
+    "url": "https://github.com/osjayaprakash/freestyle-libre-mcp",
+    "source": "github"
+  },
+  "version": "0.1.1",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "registryBaseUrl": "https://pypi.org",
+      "identifier": "freestyle-libre-mcp",
+      "version": "0.1.1",
+      "runtimeHint": "uvx",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "LIBRELINKUP_EMAIL",
+          "description": "LibreLinkUp follower account email",
+          "isRequired": true
+        },
+        {
+          "name": "LIBRELINKUP_PASSWORD",
+          "description": "LibreLinkUp follower account password",
+          "isRequired": true,
+          "isSecret": true
+        },
+        {
+          "name": "LIBRELINKUP_REGION",
+          "description": "LibreLinkUp region of the account",
+          "default": "US",
+          "choices": ["US", "EU", "EU2", "AE", "AP", "AU", "CA", "DE", "FR", "JP", "LA", "RU"]
+        }
+      ]
+    },
+    {
+      "registryType": "oci",
+      "identifier": "ghcr.io/osjayaprakash/freestyle-libre-mcp:0.1.1",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "LIBRELINKUP_EMAIL",
+          "description": "LibreLinkUp follower account email",
+          "isRequired": true
+        },
+        {
+          "name": "LIBRELINKUP_PASSWORD",
+          "description": "LibreLinkUp follower account password",
+          "isRequired": true,
+          "isSecret": true
+        },
+        {
+          "name": "LIBRELINKUP_REGION",
+          "description": "LibreLinkUp region of the account",
+          "default": "US",
+          "choices": ["US", "EU", "EU2", "AE", "AP", "AU", "CA", "DE", "FR", "JP", "LA", "RU"]
+        }
+      ]
+    }
+  ]
+}
