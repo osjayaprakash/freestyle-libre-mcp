@@ -128,3 +128,7 @@ uv run pytest            # offline suite
 uv run pytest -m live    # hits the real API; needs LIBRELINKUP_EMAIL/PASSWORD
 uv run ruff check src tests && uv run ruff format --check src tests
 ```
+
+## License
+
+[MIT](https://github.com/osjayaprakash/freestyle-libre-mcp/blob/master/LICENSE)
