@@ -24,8 +24,9 @@ readings", and gets correct answers with no further setup.
 - **stdio transport**, local process.
 - **Credentials from environment variables only**, never tool arguments.
 - **Read-only.**
-- **Official `mcp` Python SDK, FastMCP API.** Not the low-level `Server` API,
-  not the standalone `fastmcp` v2 package.
+- **Official `mcp` Python SDK (v2.x), `MCPServer` API.** (`MCPServer` is the
+  v2 name for what v1 called FastMCP.) Not the low-level `Server` API, not the
+  standalone `fastmcp` package.
 - **Optional Langfuse tracing**, metadata-only by default, readings captured
   only when explicitly enabled.
 
@@ -64,7 +65,7 @@ librelinkup-mcp/
 └── tests/
 ```
 
-Data flow: MCP client → FastMCP tool (`server.py`) → `traced` span
+Data flow: MCP client → MCPServer tool (`server.py`) → `traced` span
 (`tracing.py`) → `GlucoseService` (`service.py`) → `asyncio.to_thread` →
 pylibrelinkup → LibreLinkUp API. Results pass through `formatting.py` and are
 returned as JSON-serialisable dicts/lists.
@@ -96,8 +97,10 @@ The only module that imports `pylibrelinkup`.
 - **Lazy authentication:** first call authenticates. An `asyncio.Lock` guards
   authentication and the patient cache so concurrent first calls authenticate
   once.
-- **Re-auth:** if a data call raises `AuthenticationError`, re-authenticate once
-  and retry the call once. A second failure is surfaced.
+- **Re-auth:** if a data call raises `AuthenticationError` or a
+  `requests.HTTPError` with status 401 (how pylibrelinkup surfaces an expired
+  token), re-authenticate once and retry the call once. A second failure is
+  surfaced.
 - **Patient cache:** fetched once per process. On a name/UUID miss, refetch
   once before reporting not-found.
 - **Patient resolution** for the `patient` argument:
@@ -109,7 +112,7 @@ The only module that imports `pylibrelinkup`.
      case-insensitive match on first name. Exactly one match → use it; several
      → "ambiguous" error listing candidates; none → "not found" error listing
      candidates.
-- **Error mapping** to `mcp.server.fastmcp.exceptions.ToolError`:
+- **Error mapping** to `mcp.server.mcpserver.exceptions.ToolError`:
 
 | Upstream exception | Message |
 |---|---|
@@ -120,7 +123,8 @@ The only module that imports `pylibrelinkup`.
 | `LLUAPIRateLimitError` | "Rate limited by LibreLinkUp. Try again in {retry_after} seconds." (or "later" when `retry_after` is None) |
 | `PatientNotFoundError` | "LibreLinkUp reports patient not found." |
 | other `LLUAPIError` | "LibreLinkUp API error {response_code}." |
-| `requests.RequestException` | "Could not reach LibreLinkUp: {exception class name}." |
+| `requests.HTTPError` (non-401, or 401 after retry) | "LibreLinkUp API error {status code}." |
+| other `requests.RequestException` | "Could not reach LibreLinkUp: {exception class name}." |
 
 ### `formatting.py`
 
@@ -142,19 +146,25 @@ The `glucose_units` mapping is taken from pylibrelinkup's test fixtures:
 - `configure(settings)` called once at startup.
 - `traced(name: str)` decorator for async functions:
   - Disabled, or `langfuse` not importable → returns the function unchanged.
-  - Enabled → wraps with Langfuse v3 `observe(name=name, capture_input=capture, capture_output=capture)`.
-  - Always records metadata: tool name, resolved patient UUID (when known),
-    outcome. On error, marks the observation `level="ERROR"` with the exception
-    type; `status_message` includes the exception message only when capture is on.
-- The upstream API call inside `GlucoseService` is a child span named
-  `librelinkup.<method>`.
+  - Enabled → opens an observation (`as_type="tool"`) with Langfuse's
+    `start_as_current_observation` context manager. Tool arguments are sent as
+    `input` and the result as `output` only when capture is on.
+  - Exceptions are caught inside the observation, recorded with
+    `level="ERROR"` and a `status_message` that is the exception message when
+    capture is on and the exception class name otherwise, then re-raised after
+    the observation closes. Langfuse's `@observe` decorator is not used because
+    it always writes `str(exception)` into the trace.
+- `span(name, metadata)` async context manager for the upstream API call inside
+  `GlucoseService`: a child span named `librelinkup.<method>` with metadata
+  `{"patient_id": <uuid>}` (UUID only, never names). Same error handling.
+  No-op when disabled.
 - `shutdown()` flushes the Langfuse client; registered with `atexit`.
 - Nothing in this module writes to stdout. Langfuse SDK logging is routed to
   stderr.
 
 ### `server.py`
 
-- `mcp = FastMCP("librelinkup")`.
+- `mcp = MCPServer("librelinkup")`.
 - Four tools, each a thin call to the service followed by formatting:
 
 | Tool | Args | Returns | Docstring gist |
@@ -190,8 +200,9 @@ pytest + pytest-asyncio. No network in the default suite.
   - every patient-resolution branch;
   - patient-cache refresh on miss.
 - `test_tracing.py`: passthrough when disabled; passthrough when `langfuse`
-  import fails (monkeypatched); capture flag forwarded to a fake `observe`.
-- `test_server.py`: in-memory FastMCP client session against a fake service;
+  import fails (monkeypatched); fake Langfuse client records input/output only when capture is on and
+  `status_message` is the class name when capture is off.
+- `test_server.py`: in-process `mcp.Client(server)` session against a fake service;
   `list_tools` returns the four tools with expected schemas; each tool returns
   expected JSON; ToolError surfaces as a tool error result.
 - `test_live.py`: `@pytest.mark.live`, skipped unless `LIBRELINKUP_EMAIL` and
@@ -202,7 +213,8 @@ pytest + pytest-asyncio. No network in the default suite.
 
 - `pyproject.toml`, hatchling build backend, `requires-python = ">=3.11"`.
 - Dependencies: `mcp`, `pylibrelinkup`.
-- Optional extra `langfuse`: `langfuse>=3`.
+- Optional extra `langfuse`: `langfuse>=4,<5`.
+- `mcp>=2.2,<3`.
 - Dev dependency group: `pytest`, `pytest-asyncio`, `ruff`.
 - Console script: `librelinkup-mcp = "librelinkup_mcp.server:main"`.
 - README: env vars, regions, Claude Desktop JSON config, `claude mcp add`
