@@ -1,5 +1,11 @@
 # freestyle-libre-mcp
 
+[![CI](https://github.com/osjayaprakash/freestyle-libre-mcp/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/osjayaprakash/freestyle-libre-mcp/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/freestyle-libre-mcp)](https://pypi.org/project/freestyle-libre-mcp/)
+[![Python](https://img.shields.io/pypi/pyversions/freestyle-libre-mcp)](https://pypi.org/project/freestyle-libre-mcp/)
+[![Docker](https://img.shields.io/badge/docker-ghcr.io-2496ED?logo=docker&logoColor=white)](https://github.com/osjayaprakash/freestyle-libre-mcp/pkgs/container/freestyle-libre-mcp)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](https://github.com/osjayaprakash/freestyle-libre-mcp/blob/master/LICENSE)
+
 An MCP server that gives Claude (or any MCP client) read-only access to FreeStyle Libre
 CGM glucose readings shared through LibreLinkUp. It talks to the LibreLinkUp API with its
 own small async client (`librelinkup_mcp.core`); the API behaviour it relies on follows
