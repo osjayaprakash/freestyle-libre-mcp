@@ -1,7 +1,8 @@
 # librelinkup-mcp — Design
 
 Date: 2026-09-26
-Status: Draft for review
+Status: Approved. Its pylibrelinkup parts are superseded by
+`2026-09-26-core-client-design.md` (in-house async client).
 
 ## Goal
 
