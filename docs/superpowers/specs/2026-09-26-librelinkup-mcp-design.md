@@ -44,7 +44,7 @@ caching of readings, automatic retry on rate limits, automatic region switching.
 | `LIBRELINKUP_REGION` | no | `US` | `APIUrl` member name, case-insensitive (`US`, `EU`, `EU2`, `AE`, `AP`, `AU`, `CA`, `DE`, `FR`, `JP`, `LA`, `RU`) |
 | `LANGFUSE_PUBLIC_KEY` | no | — | Enables tracing when set together with secret key |
 | `LANGFUSE_SECRET_KEY` | no | — | See above |
-| `LANGFUSE_HOST` | no | Langfuse SDK default | Self-hosted or regional Langfuse URL |
+| `LANGFUSE_BASE_URL` | no | Langfuse Cloud | Self-hosted or regional Langfuse URL (read by the Langfuse SDK; the deprecated `LANGFUSE_HOST` also works) |
 | `LANGFUSE_CAPTURE_DATA` | no | `false` | `true`/`1`/`yes` → include tool inputs/outputs and error messages in traces |
 
 ## Architecture
@@ -125,6 +125,9 @@ The only module that imports `pylibrelinkup`.
 | other `LLUAPIError` | "LibreLinkUp API error {response_code}." |
 | `requests.HTTPError` (non-401, or 401 after retry) | "LibreLinkUp API error {status code}." |
 | other `requests.RequestException` | "Could not reach LibreLinkUp: {exception class name}." |
+| `pydantic.ValidationError` (payload shape, e.g. no active sensor) | "LibreLinkUp returned data in an unexpected shape (for example, no active sensor for this patient)." |
+
+  Exceptions outside this table propagate unchanged.
 
 ### `formatting.py`
 
@@ -205,6 +208,9 @@ pytest + pytest-asyncio. No network in the default suite.
 - `test_server.py`: in-process `mcp.Client(server)` session against a fake service;
   `list_tools` returns the four tools with expected schemas; each tool returns
   expected JSON; ToolError surfaces as a tool error result.
+- `test_stdio.py`: launches `python -m librelinkup_mcp` as a subprocess with
+  dummy credentials and lists tools over stdio (no network), proving nothing
+  but MCP frames reach stdout.
 - `test_live.py`: `@pytest.mark.live`, skipped unless `LIBRELINKUP_EMAIL` and
   `LIBRELINKUP_PASSWORD` are set; calls `list_patients` and
   `get_current_glucose` only.
