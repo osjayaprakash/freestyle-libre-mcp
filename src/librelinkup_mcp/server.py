@@ -96,7 +96,7 @@ def main() -> None:
     try:
         settings = load_settings()
     except ConfigError as exc:
-        print(f"librelinkup-mcp: {exc}", file=sys.stderr)
+        print(f"freestyle-libre-mcp: {exc}", file=sys.stderr)
         sys.exit(1)
 
     tracing.configure(settings)

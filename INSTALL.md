@@ -1,4 +1,4 @@
-# Installing librelinkup-mcp
+# Installing freestyle-libre-mcp
 
 This guide takes you from nothing to asking Claude "what's my glucose right now?". It
 takes about 15 minutes, most of it spent on the LibreLinkUp account.
@@ -44,8 +44,8 @@ Valid regions: `US`, `EU`, `EU2`, `AE`, `AP`, `AU`, `CA`, `DE`, `FR`, `JP`, `LA`
 ## 3. Download and install
 
 ```bash
-git clone <this repo URL> librelinkup-mcp
-cd librelinkup-mcp
+git clone https://github.com/osjayaprakash/freestyle-libre-mcp.git
+cd freestyle-libre-mcp
 uv sync
 ```
 
@@ -102,7 +102,7 @@ uv run pytest -m live -q
      "mcpServers": {
        "librelinkup": {
          "command": "/Users/you/.local/bin/uv",
-         "args": ["--directory", "/Users/you/librelinkup-mcp", "run", "librelinkup-mcp"],
+         "args": ["--directory", "/Users/you/freestyle-libre-mcp", "run", "freestyle-libre-mcp"],
          "env": {
            "LIBRELINKUP_EMAIL": "you@example.com",
            "LIBRELINKUP_PASSWORD": "your-password",
@@ -114,7 +114,7 @@ uv run pytest -m live -q
    ```
 
    On Windows, double every backslash in paths, for example
-   `"C:\\Users\\you\\librelinkup-mcp"`.
+   `"C:\\Users\\you\\freestyle-libre-mcp"`.
 
 4. Quit Claude Desktop completely and reopen it. The `librelinkup` tools should appear in
    the tools menu.
@@ -126,7 +126,7 @@ claude mcp add librelinkup \
   -e LIBRELINKUP_EMAIL=you@example.com \
   -e LIBRELINKUP_PASSWORD=your-password \
   -e LIBRELINKUP_REGION=US \
-  -- uv --directory /Users/you/librelinkup-mcp run librelinkup-mcp
+  -- uv --directory /Users/you/freestyle-libre-mcp run freestyle-libre-mcp
 ```
 
 This adds the server to the current project only. Add `--scope user` after `add` to make
@@ -137,7 +137,7 @@ it available in every project. Check it with `claude mcp list`.
 Run this command with the three environment variables set; it speaks MCP over stdio:
 
 ```bash
-uv --directory /path/to/librelinkup-mcp run librelinkup-mcp
+uv --directory /path/to/freestyle-libre-mcp run freestyle-libre-mcp
 ```
 
 ## 6. Try it
@@ -159,8 +159,8 @@ LibreLinkUp returns the last known value, which can be hours old.
 To send a trace of each tool call to [Langfuse](https://langfuse.com):
 
 1. Install the extra: `uv sync --extra langfuse`.
-2. In the client config, change `run librelinkup-mcp` to
-   `run --extra langfuse librelinkup-mcp`.
+2. In the client config, change `run freestyle-libre-mcp` to
+   `run --extra langfuse freestyle-libre-mcp`.
 3. Add `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` to the server's `env`, plus
    `LANGFUSE_BASE_URL` if you don't use Langfuse Cloud.
 
@@ -187,7 +187,7 @@ on with a Langfuse instance you trust, such as a self-hosted one.
 ## Updating
 
 ```bash
-cd /path/to/librelinkup-mcp
+cd /path/to/freestyle-libre-mcp
 git pull
 uv sync
 ```
@@ -198,7 +198,7 @@ Then restart your MCP client.
 
 1. Remove the `librelinkup` entry from `claude_desktop_config.json`, or run
    `claude mcp remove librelinkup`.
-2. Delete the `librelinkup-mcp` folder.
+2. Delete the `freestyle-libre-mcp` folder.
 
 ## A note on your password
 
