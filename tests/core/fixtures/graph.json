@@ -1,0 +1,50 @@
+{
+  "status": 0,
+  "data": {
+    "connection": {
+      "id": "11111111-1111-1111-1111-111111111111",
+      "patientId": "22222222-2222-2222-2222-222222222222",
+      "firstName": "Ann",
+      "lastName": "Lee",
+      "glucoseMeasurement": {
+        "FactoryTimestamp": "9/26/2026 1:05:00 PM",
+        "Timestamp": "9/26/2026 3:05:00 PM",
+        "type": 1,
+        "ValueInMgPerDl": 115,
+        "TrendArrow": 3,
+        "TrendMessage": null,
+        "MeasurementColor": 1,
+        "GlucoseUnits": 1,
+        "Value": 115,
+        "isHigh": false,
+        "isLow": false
+      }
+    },
+    "activeSensors": [],
+    "graphData": [
+      {
+        "FactoryTimestamp": "9/26/2026 12:45:00 PM",
+        "Timestamp": "9/26/2026 2:45:00 PM",
+        "type": 0,
+        "ValueInMgPerDl": 110,
+        "MeasurementColor": 1,
+        "GlucoseUnits": 1,
+        "Value": 110,
+        "isHigh": false,
+        "isLow": false
+      },
+      {
+        "FactoryTimestamp": "9/26/2026 1:00:00 PM",
+        "Timestamp": "9/26/2026 3:00:00 PM",
+        "type": 0,
+        "ValueInMgPerDl": 120,
+        "MeasurementColor": 1,
+        "GlucoseUnits": 1,
+        "Value": 120,
+        "isHigh": false,
+        "isLow": false
+      }
+    ]
+  },
+  "ticket": {"token": "token-refreshed", "expires": 1790000000, "duration": 15552000000}
+}

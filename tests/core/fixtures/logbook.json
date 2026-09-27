@@ -1,0 +1,18 @@
+{
+  "status": 0,
+  "data": [
+    {
+      "FactoryTimestamp": "9/20/2026 1:00:00 AM",
+      "Timestamp": "9/20/2026 3:00:00 AM",
+      "type": 2,
+      "ValueInMgPerDl": 62,
+      "TrendArrow": 2,
+      "MeasurementColor": 3,
+      "GlucoseUnits": 1,
+      "Value": 62,
+      "isHigh": false,
+      "isLow": true
+    }
+  ],
+  "ticket": {"token": "token-refreshed", "expires": 1790000000, "duration": 15552000000}
+}

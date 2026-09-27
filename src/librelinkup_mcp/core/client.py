@@ -3,21 +3,26 @@
 from __future__ import annotations
 
 import hashlib
-from typing import Any
+from collections.abc import Callable
+from typing import Any, TypeVar
+from uuid import UUID
 
 import httpx2
+from pydantic import TypeAdapter, ValidationError
 
 from librelinkup_mcp.core.exceptions import (
     APIError,
     AuthenticationError,
     EmailVerificationError,
     NetworkError,
+    PatientNotFoundError,
     PrivacyPolicyError,
     RateLimitError,
     RedirectError,
     ResponseShapeError,
     TermsOfUseError,
 )
+from librelinkup_mcp.core.models import GlucoseMeasurement, GlucoseMeasurementWithTrend, Patient
 from librelinkup_mcp.core.regions import Region
 
 # The API only answers requests that look like the official app. Bump VERSION
@@ -38,6 +43,11 @@ _STEP_ERRORS: dict[str, type[Exception]] = {
     "pp": PrivacyPolicyError,
     "verifyEmail": EmailVerificationError,
 }
+
+_PATIENTS = TypeAdapter(list[Patient])
+_MEASUREMENTS = TypeAdapter(list[GlucoseMeasurement])
+
+T = TypeVar("T")
 
 
 class LibreLinkUpClient:
@@ -97,6 +107,40 @@ class LibreLinkUpClient:
             "account-id": hashlib.sha256(str(user_id).encode()).hexdigest(),
         }
 
+    async def get_patients(self) -> list[Patient]:
+        data = await self._get_data("/llu/connections", "get_patients")
+        return _parse("get_patients", lambda: _PATIENTS.validate_python(data))
+
+    async def latest(self, patient_id: UUID) -> GlucoseMeasurementWithTrend:
+        data = await self._get_data(f"/llu/connections/{patient_id}/graph", "latest")
+        return _parse(
+            "latest",
+            lambda: GlucoseMeasurementWithTrend.model_validate(
+                data["connection"]["glucoseMeasurement"]
+            ),
+        )
+
+    async def graph(self, patient_id: UUID) -> list[GlucoseMeasurement]:
+        data = await self._get_data(f"/llu/connections/{patient_id}/graph", "graph")
+        return _parse("graph", lambda: _MEASUREMENTS.validate_python(data["graphData"]))
+
+    async def logbook(self, patient_id: UUID) -> list[GlucoseMeasurement]:
+        data = await self._get_data(f"/llu/connections/{patient_id}/logbook", "logbook")
+        return _parse("logbook", lambda: _MEASUREMENTS.validate_python(data))
+
+    async def _get_data(self, path: str, call: str) -> Any:
+        if self._auth_headers is None:
+            raise AuthenticationError("Not logged in")
+        response = await self._send("GET", path, headers=self._auth_headers)
+        body = _json_object(response, call)
+        status = body.get("status", 0)
+        if status != 0:
+            error = body.get("error")
+            if isinstance(error, dict) and error.get("message") == "couldNotLoadPatient":
+                raise PatientNotFoundError()
+            raise APIError(status if isinstance(status, int) else 0)
+        return body.get("data")
+
     async def _send(
         self,
         method: str,
@@ -127,3 +171,10 @@ def _json_object(response: httpx2.Response, call: str) -> dict[str, Any]:
     if not isinstance(body, dict):
         raise ResponseShapeError(call)
     return body
+
+
+def _parse(call: str, build: Callable[[], T]) -> T:
+    try:
+        return build()
+    except (ValidationError, KeyError, TypeError):
+        raise ResponseShapeError(call) from None
