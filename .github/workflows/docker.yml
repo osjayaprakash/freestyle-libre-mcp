@@ -1,9 +1,11 @@
 name: Docker
 
-# Push a tag like v0.1.1 to publish the image to ghcr.io.
+# Push a tag like v0.1.1, or run it by hand, to publish the image to ghcr.io.
+# The image is tagged with the version in pyproject.toml and "latest".
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
 
 jobs:
   docker:
@@ -20,13 +22,14 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - id: version
+        run: echo "version=$(sed -nE 's/^version = "(.+)"/\1/p' pyproject.toml)" >> "$GITHUB_OUTPUT"
       - id: meta
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=${{ steps.version.outputs.version }}
             type=raw,value=latest
       - uses: docker/build-push-action@v6
         with:
