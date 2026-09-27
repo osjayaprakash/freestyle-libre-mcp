@@ -1,0 +1,7 @@
+{
+  "status": 0,
+  "data": {
+    "user": {"id": "follower-user-0001", "firstName": "Follower", "lastName": "Account"},
+    "authTicket": {"token": "token-abc", "expires": 1790000000, "duration": 15552000000}
+  }
+}
