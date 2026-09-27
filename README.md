@@ -24,6 +24,9 @@ phone is out of range.
 
 ## Setup
 
+For a step-by-step guide, including account setup and troubleshooting, see
+[INSTALL.md](INSTALL.md).
+
 You need a LibreLinkUp **follower** account: invite it from the LibreLink app, accept the
 invite in the LibreLinkUp app, and accept any terms there before using this server.
 
