@@ -82,3 +82,23 @@ async def test_main_exits_on_missing_credentials(monkeypatch, capsys):
     captured = capsys.readouterr()
     assert captured.out == ""
     assert "LIBRELINKUP_EMAIL" in captured.err
+
+
+def test_build_client_sends_password_verbatim():
+    from pylibrelinkup import APIUrl
+
+    from librelinkup_mcp.config import load_settings
+
+    settings = load_settings(
+        {
+            "LIBRELINKUP_EMAIL": "me@example.com",
+            "LIBRELINKUP_PASSWORD": " pass word ",
+            "LIBRELINKUP_REGION": "EU",
+        }
+    )
+    client = server.build_client(settings)
+    assert client.login_args.model_dump() == {
+        "email": "me@example.com",
+        "password": " pass word ",
+    }
+    assert client.api_url == APIUrl.EU.value
