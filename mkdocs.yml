@@ -1,0 +1,21 @@
+site_name: freestyle-libre-mcp
+site_description: MCP server exposing FreeStyle Libre glucose readings from LibreLinkUp
+repo_url: https://github.com/osjayaprakash/freestyle-libre-mcp
+docs_dir: documentation
+
+theme:
+  name: material
+  features:
+    - content.code.copy
+
+nav:
+  - Home: index.md
+  - Installation: install.md
+
+markdown_extensions:
+  - admonition
+  - tables
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.snippets:
+      check_paths: true
