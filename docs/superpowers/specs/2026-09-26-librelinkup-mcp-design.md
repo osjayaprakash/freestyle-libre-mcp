@@ -134,11 +134,15 @@ The only module that imports `pylibrelinkup`.
 Pure functions:
 
 - `patient_to_dict(p) -> {"patient_id", "id", "first_name", "last_name"}` (UUIDs as strings).
-- `measurement_to_dict(m) -> {"timestamp", "value", "value_mg_dl", "unit", "is_high", "is_low"}`
-  - `timestamp`: ISO 8601 of `m.timestamp`.
+- `measurement_to_dict(m) -> {"timestamp", "timestamp_utc", "value", "value_mg_dl", "unit", "is_high", "is_low"}`
+  - `timestamp`: ISO 8601 of `m.timestamp` (sensor local time, no offset).
+  - `timestamp_utc`: ISO 8601 of `m.factory_timestamp` (UTC).
   - `unit`: `"mg/dL"` when `glucose_units == 1`, else `"mmol/L"`.
   - If `m` has `trend`: adds `"trend"` (enum name, e.g. `"UP_SLOW"`) and `"trend_arrow"` (e.g. `"↗"`).
-- `readings_response(patient, measurements) -> {"patient": ..., "count": n, "readings": [...]}` sorted by timestamp ascending.
+- `current_response(patient, m, *, now=None)`: `{"patient", "reading"}`; the reading
+  also carries `age_minutes` (whole minutes since `factory_timestamp`) so a stale
+  "current" value is visible.
+- `readings_response(patient, measurements) -> {"patient": ..., "count": n, "readings": [...]}` sorted by `timestamp_utc` ascending (local time is ambiguous across DST changes).
 
 The `glucose_units` mapping is taken from pylibrelinkup's test fixtures:
 `GlucoseUnits: 1` accompanies integer values (e.g. 115, mg/dL) and

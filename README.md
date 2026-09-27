@@ -17,7 +17,9 @@ Every reading tool takes an optional `patient`: a name (`"Ann Lee"`, `"ann"`) or
 `patient_id` from `list_patients`. It can be omitted when the account follows one person.
 
 Readings include `value` in the account's unit, `value_mg_dl`, `unit`, `timestamp` (the
-sensor's local time), and `is_high`/`is_low` flags.
+sensor's local time), `timestamp_utc`, and `is_high`/`is_low` flags. The current reading
+also has `age_minutes`, since LibreLinkUp returns the last known value when the sensor or
+phone is out of range.
 
 ## Setup
 

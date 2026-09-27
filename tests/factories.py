@@ -26,10 +26,20 @@ def _measurement_json(timestamp: str, value: float, mg_dl: float, units: int) ->
 
 
 def make_measurement(
-    timestamp: str, value: float, *, mg_dl: float | None = None, units: int = 1
+    timestamp: str,
+    value: float,
+    *,
+    mg_dl: float | None = None,
+    units: int = 1,
+    utc: str | None = None,
 ) -> GlucoseMeasurement:
-    """`timestamp` uses the API format, e.g. "9/26/2026 7:00:00 AM"."""
+    """`timestamp` uses the API format, e.g. "9/26/2026 7:00:00 AM".
+
+    `utc` sets FactoryTimestamp (UTC); it defaults to `timestamp`.
+    """
     data = _measurement_json(timestamp, value, value if mg_dl is None else mg_dl, units)
+    if utc is not None:
+        data["FactoryTimestamp"] = utc
     return GlucoseMeasurement.model_validate(data)
 
 

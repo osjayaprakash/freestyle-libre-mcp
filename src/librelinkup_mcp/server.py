@@ -22,7 +22,7 @@ mcp = MCPServer(
     instructions=(
         "Read-only access to FreeStyle Libre CGM glucose readings shared through LibreLinkUp. "
         "Values are reported in the account's unit (mg/dL or mmol/L) and also in mg/dL. "
-        "Timestamps are the sensor's local time."
+        "`timestamp` is the sensor's local time; `timestamp_utc` is UTC."
     ),
 )
 
@@ -63,7 +63,10 @@ async def list_patients() -> dict[str, Any]:
 @mcp.tool(annotations=_READ_ONLY)
 @tracing.traced("get_current_glucose")
 async def get_current_glucose(patient: PatientArg = None) -> dict[str, Any]:
-    """Most recent glucose reading with its trend arrow."""
+    """Most recent glucose reading with its trend arrow.
+
+    Check `age_minutes`: if the sensor or phone is out of range, this can be an old reading.
+    """
     resolved, reading = await _get_service().current(patient)
     return formatting.current_response(resolved, reading)
 

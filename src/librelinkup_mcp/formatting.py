@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from datetime import UTC, datetime
 from typing import Any
 
 from pylibrelinkup.models.data import GlucoseMeasurement, GlucoseMeasurementWithTrend, Patient
@@ -23,6 +24,7 @@ def patient_to_dict(patient: Patient) -> dict[str, str]:
 def measurement_to_dict(measurement: GlucoseMeasurement) -> dict[str, Any]:
     result: dict[str, Any] = {
         "timestamp": measurement.timestamp.isoformat(),
+        "timestamp_utc": measurement.factory_timestamp.isoformat(),
         "value": measurement.value,
         "value_mg_dl": measurement.value_in_mg_per_dl,
         "unit": "mg/dL" if measurement.glucose_units == _MG_DL else "mmol/L",
@@ -35,14 +37,22 @@ def measurement_to_dict(measurement: GlucoseMeasurement) -> dict[str, Any]:
     return result
 
 
-def current_response(patient: Patient, measurement: GlucoseMeasurementWithTrend) -> dict[str, Any]:
-    return {"patient": patient_to_dict(patient), "reading": measurement_to_dict(measurement)}
+def current_response(
+    patient: Patient,
+    measurement: GlucoseMeasurementWithTrend,
+    *,
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    reading = measurement_to_dict(measurement)
+    elapsed = (now or datetime.now(UTC)) - measurement.factory_timestamp
+    reading["age_minutes"] = int(elapsed.total_seconds() // 60)
+    return {"patient": patient_to_dict(patient), "reading": reading}
 
 
 def readings_response(
     patient: Patient, measurements: Iterable[GlucoseMeasurement]
 ) -> dict[str, Any]:
-    ordered = sorted(measurements, key=lambda m: m.timestamp)
+    ordered = sorted(measurements, key=lambda m: m.factory_timestamp)
     return {
         "patient": patient_to_dict(patient),
         "count": len(ordered),
