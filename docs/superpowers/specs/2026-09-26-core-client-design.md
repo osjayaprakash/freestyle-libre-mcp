@@ -141,7 +141,8 @@ Every request sends `accept-encoding: gzip`, `cache-control: no-cache`,
 4. `data.redirect` true → `RedirectError(data.region.upper())`.
 5. `data.step.type` `tou` / `pp` / `verifyEmail` → `TermsOfUseError` /
    `PrivacyPolicyError` / `EmailVerificationError`.
-6. Body `status` present and non-zero → `AuthenticationError`.
+6. Body `status` 2 (wrong email/password) → `AuthenticationError`; any other
+   non-zero status (e.g. a minimum-app-version rejection) → `APIError(status)`.
 7. Read `data.authTicket.token` and `data.user.id`; missing →
    `ResponseShapeError("authenticate")`. Store token and account-id hash.
 

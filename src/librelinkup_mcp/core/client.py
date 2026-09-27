@@ -44,6 +44,9 @@ _STEP_ERRORS: dict[str, type[Exception]] = {
     "verifyEmail": EmailVerificationError,
 }
 
+# Login body status for wrong email/password; other non-zero statuses are not credential errors.
+_BAD_CREDENTIALS = 2
+
 _PATIENTS = TypeAdapter(list[Patient])
 _MEASUREMENTS = TypeAdapter(list[GlucoseMeasurement])
 
@@ -92,8 +95,12 @@ class LibreLinkUpClient:
         step_type = step.get("type") if isinstance(step, dict) else None
         if step_type in _STEP_ERRORS:
             raise _STEP_ERRORS[step_type]()
-        if body.get("status", 0) != 0:
+        status = body.get("status", 0)
+        if status == _BAD_CREDENTIALS:
             raise AuthenticationError("LibreLinkUp rejected the credentials")
+        if status != 0:
+            # e.g. a minimum-app-version bump: not the user's password.
+            raise APIError(status if isinstance(status, int) else 0)
 
         try:
             token = data["authTicket"]["token"]

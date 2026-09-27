@@ -145,3 +145,13 @@ async def test_aclose_closes_http_client():
     client = make_client(MockAPI())
     await client.aclose()
     assert client._http.is_closed
+
+
+async def test_non_credential_login_rejection_is_api_error_not_bad_password():
+    # e.g. Abbott raising the minimum app version: status 920, not 2 (bad credentials).
+    api = MockAPI()
+    api.on("POST", LOGIN, json_body={"status": 920, "data": {"minimumVersion": "4.17.0"}})
+    async with make_client(api) as client:
+        with pytest.raises(APIError) as info:
+            await client.authenticate()
+    assert info.value.status == 920
