@@ -2,10 +2,39 @@
 
 from __future__ import annotations
 
+import asyncio
+from collections.abc import Callable
+from typing import Protocol, TypeVar
 from uuid import UUID
 
+import pydantic
+import requests
 from mcp.server.mcpserver.exceptions import ToolError
-from pylibrelinkup.models.data import Patient
+from pylibrelinkup import (
+    AuthenticationError,
+    EmailVerificationError,
+    LLUAPIError,
+    LLUAPIRateLimitError,
+    PatientNotFoundError,
+    PrivacyPolicyError,
+    RedirectError,
+    TermsOfUseError,
+)
+from pylibrelinkup.models.data import GlucoseMeasurement, GlucoseMeasurementWithTrend, Patient
+
+from librelinkup_mcp import tracing
+
+T = TypeVar("T")
+
+
+class LibreClient(Protocol):
+    """The subset of pylibrelinkup.PyLibreLinkUp that GlucoseService uses."""
+
+    def authenticate(self) -> None: ...
+    def get_patients(self) -> list[Patient]: ...
+    def latest(self, patient_identifier: UUID) -> GlucoseMeasurementWithTrend: ...
+    def graph(self, patient_identifier: UUID) -> list[GlucoseMeasurement]: ...
+    def logbook(self, patient_identifier: UUID) -> list[GlucoseMeasurement]: ...
 
 
 class UnknownPatientError(ToolError):
@@ -50,3 +79,125 @@ def resolve_patient(patients: list[Patient], identifier: str | None) -> Patient:
     raise UnknownPatientError(
         f"No followed patient matches {text!r}. Followed patients: {_describe(patients)}"
     )
+
+
+def _is_auth_failure(exc: Exception) -> bool:
+    if isinstance(exc, AuthenticationError):
+        return True
+    return (
+        isinstance(exc, requests.HTTPError)
+        and exc.response is not None
+        and exc.response.status_code == 401
+    )
+
+
+def _to_tool_error(exc: Exception) -> ToolError | None:
+    """Translate a pylibrelinkup/requests exception into a user-facing ToolError."""
+    if isinstance(exc, AuthenticationError):
+        return ToolError(
+            "LibreLinkUp login failed. Check LIBRELINKUP_EMAIL and LIBRELINKUP_PASSWORD."
+        )
+    if isinstance(exc, RedirectError):
+        region = exc.region.name
+        return ToolError(
+            f"This account belongs to region {region}. Set LIBRELINKUP_REGION={region}."
+        )
+    if isinstance(exc, TermsOfUseError):
+        return ToolError(
+            "Open the LibreLinkUp app and accept the updated terms of use, then retry."
+        )
+    if isinstance(exc, PrivacyPolicyError):
+        return ToolError(
+            "Open the LibreLinkUp app and accept the updated privacy policy, then retry."
+        )
+    if isinstance(exc, EmailVerificationError):
+        return ToolError("Verify the account email address in the LibreLinkUp app, then retry.")
+    if isinstance(exc, LLUAPIRateLimitError):
+        wait = f"in {exc.retry_after} seconds" if exc.retry_after is not None else "later"
+        return ToolError(f"Rate limited by LibreLinkUp. Try again {wait}.")
+    if isinstance(exc, PatientNotFoundError):
+        return ToolError("LibreLinkUp reports patient not found.")
+    if isinstance(exc, LLUAPIError):
+        return ToolError(f"LibreLinkUp API error {exc.response_code}.")
+    if isinstance(exc, requests.HTTPError):
+        status = exc.response.status_code if exc.response is not None else "unknown"
+        return ToolError(f"LibreLinkUp API error {status}.")
+    if isinstance(exc, requests.RequestException):
+        return ToolError(f"Could not reach LibreLinkUp: {type(exc).__name__}.")
+    if isinstance(exc, pydantic.ValidationError):
+        return ToolError(
+            "LibreLinkUp returned data in an unexpected shape "
+            "(for example, no active sensor for this patient)."
+        )
+    return None
+
+
+class GlucoseService:
+    """Async facade over a sync LibreLinkUp client: lazy login, re-auth, patient lookup."""
+
+    def __init__(self, client: LibreClient) -> None:
+        self._client = client
+        self._auth_lock = asyncio.Lock()
+        self._patients_lock = asyncio.Lock()
+        self._authenticated = False
+        self._patients: list[Patient] | None = None
+
+    async def list_patients(self) -> list[Patient]:
+        return await self._patient_list(refresh=False)
+
+    async def current(self, patient: str | None) -> tuple[Patient, GlucoseMeasurementWithTrend]:
+        resolved = await self._resolve(patient)
+        return resolved, await self._request("latest", self._client.latest, resolved)
+
+    async def graph(self, patient: str | None) -> tuple[Patient, list[GlucoseMeasurement]]:
+        resolved = await self._resolve(patient)
+        return resolved, await self._request("graph", self._client.graph, resolved)
+
+    async def logbook(self, patient: str | None) -> tuple[Patient, list[GlucoseMeasurement]]:
+        resolved = await self._resolve(patient)
+        return resolved, await self._request("logbook", self._client.logbook, resolved)
+
+    async def _resolve(self, identifier: str | None) -> Patient:
+        try:
+            return resolve_patient(await self._patient_list(refresh=False), identifier)
+        except UnknownPatientError:
+            # The account may have started following someone since the list was cached.
+            return resolve_patient(await self._patient_list(refresh=True), identifier)
+
+    async def _patient_list(self, *, refresh: bool) -> list[Patient]:
+        async with self._patients_lock:
+            if self._patients is None or refresh:
+                self._patients = await self._request("get_patients", self._client.get_patients)
+            return self._patients
+
+    async def _authenticate(self, *, force: bool) -> None:
+        async with self._auth_lock:
+            if self._authenticated and not force:
+                return
+            self._authenticated = False
+            await asyncio.to_thread(self._client.authenticate)
+            self._authenticated = True
+
+    async def _request(
+        self, method: str, fn: Callable[..., T], patient: Patient | None = None
+    ) -> T:
+        args = () if patient is None else (patient.patient_id,)
+        metadata = None if patient is None else {"patient_id": str(patient.patient_id)}
+        async with tracing.span(f"librelinkup.{method}", metadata):
+            try:
+                return await self._call_with_reauth(fn, *args)
+            except Exception as exc:
+                tool_error = _to_tool_error(exc)
+                if tool_error is None:
+                    raise
+                raise tool_error from exc
+
+    async def _call_with_reauth(self, fn: Callable[..., T], *args: object) -> T:
+        await self._authenticate(force=False)
+        try:
+            return await asyncio.to_thread(fn, *args)
+        except Exception as exc:
+            if not _is_auth_failure(exc):
+                raise
+        await self._authenticate(force=True)
+        return await asyncio.to_thread(fn, *args)
