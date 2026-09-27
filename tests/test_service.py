@@ -1,25 +1,23 @@
 import asyncio
 
-import pydantic
 import pytest
-import requests
 from mcp.server.mcpserver.exceptions import ToolError
-from pylibrelinkup import (
-    APIUrl,
+
+from librelinkup_mcp.core import (
+    APIError,
     AuthenticationError,
     EmailVerificationError,
-    LLUAPIError,
-    LLUAPIRateLimitError,
+    NetworkError,
     PatientNotFoundError,
     PrivacyPolicyError,
+    RateLimitError,
     RedirectError,
+    ResponseShapeError,
     TermsOfUseError,
 )
-from pylibrelinkup.models.data import GlucoseMeasurementWithTrend
-
 from librelinkup_mcp.service import GlucoseService
 from tests.factories import ANN, BOB
-from tests.fakes import FakeLibreClient, http_error
+from tests.fakes import FakeLibreClient
 
 
 async def test_lazy_login_happens_once_across_calls():
@@ -88,15 +86,12 @@ async def test_unknown_patient_after_refresh_errors():
     assert client.count("get_patients") == 2
 
 
-@pytest.mark.parametrize(
-    "expired", [AuthenticationError("PyLibreLinkUp not authenticated"), http_error(401)]
-)
-async def test_expired_session_reauthenticates_and_retries(expired):
+async def test_expired_session_reauthenticates_and_retries():
     client = FakeLibreClient([ANN])
     service = GlucoseService(client)
     await service.list_patients()
 
-    client.fail_next["graph"] = [expired]
+    client.fail_next["graph"] = [AuthenticationError("LibreLinkUp returned HTTP 401")]
     _, readings = await service.graph(None)
 
     assert len(readings) == 2
@@ -109,8 +104,8 @@ async def test_second_auth_failure_is_surfaced():
     service = GlucoseService(client)
     await service.list_patients()
 
-    client.fail_next["graph"] = [http_error(401), http_error(401)]
-    with pytest.raises(ToolError, match="LibreLinkUp API error 401"):
+    client.fail_next["graph"] = [AuthenticationError("401"), AuthenticationError("401")]
+    with pytest.raises(ToolError, match="LibreLinkUp login failed"):
         await service.graph(None)
     assert client.count("authenticate") == 2
 
@@ -130,7 +125,7 @@ async def test_bad_credentials_message_and_later_retry_logs_in_again():
 @pytest.mark.parametrize(
     "error, message",
     [
-        (RedirectError(APIUrl.EU), "belongs to region EU. Set LIBRELINKUP_REGION=EU."),
+        (RedirectError("EU"), "belongs to region EU. Set LIBRELINKUP_REGION=EU."),
         (TermsOfUseError(), "accept the updated terms of use"),
         (PrivacyPolicyError(), "accept the updated privacy policy"),
         (EmailVerificationError(), "Verify the account email address"),
@@ -146,13 +141,14 @@ async def test_login_errors_are_mapped(error, message):
 @pytest.mark.parametrize(
     "error, message",
     [
-        (LLUAPIRateLimitError(429, "slow down", retry_after=30), "Try again in 30 seconds."),
-        (LLUAPIRateLimitError(429, "slow down"), "Try again later."),
+        (RateLimitError(30), "Try again in 30 seconds."),
+        (RateLimitError(None), "Try again later."),
         (PatientNotFoundError(), "LibreLinkUp reports patient not found."),
-        (LLUAPIError(500, "boom"), "LibreLinkUp API error 500."),
-        (http_error(503), "LibreLinkUp API error 503."),
-        (requests.ConnectionError("dns"), "Could not reach LibreLinkUp: ConnectionError."),
-        (requests.Timeout("slow"), "Could not reach LibreLinkUp: Timeout."),
+        (APIError(500), "LibreLinkUp API error 500."),
+        (APIError(911), "LibreLinkUp API error 911."),
+        (NetworkError("ConnectError"), "Could not reach LibreLinkUp: ConnectError."),
+        (NetworkError("ReadTimeout"), "Could not reach LibreLinkUp: ReadTimeout."),
+        (ResponseShapeError("latest"), "LibreLinkUp returned unexpected data for latest."),
     ],
 )
 async def test_data_call_errors_are_mapped(error, message):
@@ -177,23 +173,8 @@ async def test_expired_session_on_patient_list_reauthenticates():
     await service.current(None)  # logged in, patients cached
 
     client.patients.append(BOB)
-    client.fail_next["get_patients"] = [http_error(401)]
+    client.fail_next["get_patients"] = [AuthenticationError("LibreLinkUp returned HTTP 401")]
     patient, _ = await service.current("Bob")  # cache miss -> refresh -> 401 -> re-auth
 
     assert patient is BOB
     assert client.count("authenticate") == 2
-
-
-def _validation_error() -> pydantic.ValidationError:
-    try:
-        GlucoseMeasurementWithTrend.model_validate({})
-    except pydantic.ValidationError as exc:
-        return exc
-    raise AssertionError("expected a ValidationError")
-
-
-async def test_unexpected_payload_shape_is_a_clean_tool_error():
-    client = FakeLibreClient([ANN])
-    client.fail_next["latest"] = [_validation_error()]
-    with pytest.raises(ToolError, match="no active sensor"):
-        await GlucoseService(client).current(None)

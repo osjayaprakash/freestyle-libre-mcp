@@ -10,11 +10,10 @@ from typing import Annotated, Any
 from mcp.server.mcpserver import MCPServer
 from mcp.types import ToolAnnotations
 from pydantic import Field
-from pylibrelinkup import PyLibreLinkUp
-from pylibrelinkup.models.login import LoginArgs
 
 from librelinkup_mcp import formatting, tracing
 from librelinkup_mcp.config import ConfigError, Settings, load_settings
+from librelinkup_mcp.core.client import LibreLinkUpClient
 from librelinkup_mcp.service import GlucoseService
 
 mcp = MCPServer(
@@ -87,13 +86,8 @@ async def get_glucose_logbook(patient: PatientArg = None) -> dict[str, Any]:
     return formatting.readings_response(resolved, readings)
 
 
-def build_client(settings: Settings) -> PyLibreLinkUp:
-    client = PyLibreLinkUp(
-        email=settings.email, password=settings.password, api_url=settings.region
-    )
-    # pylibrelinkup's LoginArgs strips whitespace; passwords must be sent verbatim.
-    client.login_args = LoginArgs.model_construct(email=settings.email, password=settings.password)
-    return client
+def build_client(settings: Settings) -> LibreLinkUpClient:
+    return LibreLinkUpClient(settings.email, settings.password, settings.region)
 
 
 def main() -> None:

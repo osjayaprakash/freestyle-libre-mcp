@@ -1,8 +1,8 @@
-"""Builders for real pylibrelinkup models, using the API's JSON field names."""
+"""Builders for real core models, using the API's JSON field names."""
 
 from __future__ import annotations
 
-from pylibrelinkup.models.data import GlucoseMeasurement, GlucoseMeasurementWithTrend, Patient
+from librelinkup_mcp.core import GlucoseMeasurement, GlucoseMeasurementWithTrend, Patient
 
 
 def make_patient(first: str, last: str, patient_id: str, connection_id: str) -> Patient:

@@ -5,8 +5,9 @@ description = "MCP server exposing FreeStyle Libre glucose readings from LibreLi
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "httpx2>=2.5,<3",
     "mcp>=2.2,<3",
-    "pylibrelinkup>=0.11",
+    "pydantic>=2.12,<3",
 ]
 
 [project.optional-dependencies]

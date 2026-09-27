@@ -1,4 +1,4 @@
-"""Convert pylibrelinkup models into JSON-serialisable dicts for tool results."""
+"""Convert core models into JSON-serialisable dicts for tool results."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from collections.abc import Iterable
 from datetime import UTC, datetime
 from typing import Any
 
-from pylibrelinkup.models.data import GlucoseMeasurement, GlucoseMeasurementWithTrend, Patient
+from librelinkup_mcp.core import GlucoseMeasurement, GlucoseMeasurementWithTrend, Patient
 
 # LibreLinkUp's GlucoseUnits field: 1 = mg/dL, 0 = mmol/L.
 _MG_DL = 1

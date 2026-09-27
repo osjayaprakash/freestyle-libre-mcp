@@ -1,40 +1,42 @@
-"""GlucoseService: the only module that talks to pylibrelinkup."""
+"""GlucoseService: patient lookup, lazy login and error mapping over the LibreLinkUp client."""
 
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from typing import Protocol, TypeVar
 from uuid import UUID
 
-import pydantic
-import requests
 from mcp.server.mcpserver.exceptions import ToolError
-from pylibrelinkup import (
-    AuthenticationError,
-    EmailVerificationError,
-    LLUAPIError,
-    LLUAPIRateLimitError,
-    PatientNotFoundError,
-    PrivacyPolicyError,
-    RedirectError,
-    TermsOfUseError,
-)
-from pylibrelinkup.models.data import GlucoseMeasurement, GlucoseMeasurementWithTrend, Patient
 
 from librelinkup_mcp import tracing
+from librelinkup_mcp.core import (
+    APIError,
+    AuthenticationError,
+    EmailVerificationError,
+    GlucoseMeasurement,
+    GlucoseMeasurementWithTrend,
+    NetworkError,
+    Patient,
+    PatientNotFoundError,
+    PrivacyPolicyError,
+    RateLimitError,
+    RedirectError,
+    ResponseShapeError,
+    TermsOfUseError,
+)
 
 T = TypeVar("T")
 
 
 class LibreClient(Protocol):
-    """The subset of pylibrelinkup.PyLibreLinkUp that GlucoseService uses."""
+    """The subset of core.client.LibreLinkUpClient that GlucoseService uses."""
 
-    def authenticate(self) -> None: ...
-    def get_patients(self) -> list[Patient]: ...
-    def latest(self, patient_identifier: UUID) -> GlucoseMeasurementWithTrend: ...
-    def graph(self, patient_identifier: UUID) -> list[GlucoseMeasurement]: ...
-    def logbook(self, patient_identifier: UUID) -> list[GlucoseMeasurement]: ...
+    async def authenticate(self) -> None: ...
+    async def get_patients(self) -> list[Patient]: ...
+    async def latest(self, patient_id: UUID) -> GlucoseMeasurementWithTrend: ...
+    async def graph(self, patient_id: UUID) -> list[GlucoseMeasurement]: ...
+    async def logbook(self, patient_id: UUID) -> list[GlucoseMeasurement]: ...
 
 
 class UnknownPatientError(ToolError):
@@ -81,26 +83,15 @@ def resolve_patient(patients: list[Patient], identifier: str | None) -> Patient:
     )
 
 
-def _is_auth_failure(exc: Exception) -> bool:
-    if isinstance(exc, AuthenticationError):
-        return True
-    return (
-        isinstance(exc, requests.HTTPError)
-        and exc.response is not None
-        and exc.response.status_code == 401
-    )
-
-
 def _to_tool_error(exc: Exception) -> ToolError | None:
-    """Translate a pylibrelinkup/requests exception into a user-facing ToolError."""
+    """Translate a LibreLinkUp client error into a user-facing ToolError."""
     if isinstance(exc, AuthenticationError):
         return ToolError(
             "LibreLinkUp login failed. Check LIBRELINKUP_EMAIL and LIBRELINKUP_PASSWORD."
         )
     if isinstance(exc, RedirectError):
-        region = exc.region.name
         return ToolError(
-            f"This account belongs to region {region}. Set LIBRELINKUP_REGION={region}."
+            f"This account belongs to region {exc.region}. Set LIBRELINKUP_REGION={exc.region}."
         )
     if isinstance(exc, TermsOfUseError):
         return ToolError(
@@ -112,28 +103,22 @@ def _to_tool_error(exc: Exception) -> ToolError | None:
         )
     if isinstance(exc, EmailVerificationError):
         return ToolError("Verify the account email address in the LibreLinkUp app, then retry.")
-    if isinstance(exc, LLUAPIRateLimitError):
+    if isinstance(exc, RateLimitError):
         wait = f"in {exc.retry_after} seconds" if exc.retry_after is not None else "later"
         return ToolError(f"Rate limited by LibreLinkUp. Try again {wait}.")
     if isinstance(exc, PatientNotFoundError):
         return ToolError("LibreLinkUp reports patient not found.")
-    if isinstance(exc, LLUAPIError):
-        return ToolError(f"LibreLinkUp API error {exc.response_code}.")
-    if isinstance(exc, requests.HTTPError):
-        status = exc.response.status_code if exc.response is not None else "unknown"
-        return ToolError(f"LibreLinkUp API error {status}.")
-    if isinstance(exc, requests.RequestException):
-        return ToolError(f"Could not reach LibreLinkUp: {type(exc).__name__}.")
-    if isinstance(exc, pydantic.ValidationError):
-        return ToolError(
-            "LibreLinkUp returned data in an unexpected shape "
-            "(for example, no active sensor for this patient)."
-        )
+    if isinstance(exc, APIError):
+        return ToolError(f"LibreLinkUp API error {exc.status}.")
+    if isinstance(exc, NetworkError):
+        return ToolError(f"Could not reach LibreLinkUp: {exc.kind}.")
+    if isinstance(exc, ResponseShapeError):
+        return ToolError(f"LibreLinkUp returned unexpected data for {exc.call}.")
     return None
 
 
 class GlucoseService:
-    """Async facade over a sync LibreLinkUp client: lazy login, re-auth, patient lookup."""
+    """Lazy login, re-login on expiry, and patient lookup over a LibreLinkUp client."""
 
     def __init__(self, client: LibreClient) -> None:
         self._client = client
@@ -175,11 +160,11 @@ class GlucoseService:
             if self._authenticated and not force:
                 return
             self._authenticated = False
-            await asyncio.to_thread(self._client.authenticate)
+            await self._client.authenticate()
             self._authenticated = True
 
     async def _request(
-        self, method: str, fn: Callable[..., T], patient: Patient | None = None
+        self, method: str, fn: Callable[..., Awaitable[T]], patient: Patient | None = None
     ) -> T:
         args = () if patient is None else (patient.patient_id,)
         metadata = None if patient is None else {"patient_id": str(patient.patient_id)}
@@ -192,12 +177,11 @@ class GlucoseService:
                     raise
                 raise tool_error from exc
 
-    async def _call_with_reauth(self, fn: Callable[..., T], *args: object) -> T:
+    async def _call_with_reauth(self, fn: Callable[..., Awaitable[T]], *args: object) -> T:
         await self._authenticate(force=False)
         try:
-            return await asyncio.to_thread(fn, *args)
-        except Exception as exc:
-            if not _is_auth_failure(exc):
-                raise
+            return await fn(*args)
+        except AuthenticationError:
+            pass  # token expired: log in again and retry once
         await self._authenticate(force=True)
-        return await asyncio.to_thread(fn, *args)
+        return await fn(*args)

@@ -1,7 +1,8 @@
 # librelinkup-mcp
 
 An MCP server that gives Claude (or any MCP client) read-only access to FreeStyle Libre
-CGM glucose readings shared through LibreLinkUp. Built on
+CGM glucose readings shared through LibreLinkUp. It talks to the LibreLinkUp API with its
+own small async client (`librelinkup_mcp.core`); the API behaviour it relies on follows
 [pylibrelinkup](https://github.com/robberwick/pylibrelinkup).
 
 ## Tools

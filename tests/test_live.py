@@ -4,7 +4,6 @@ import os
 
 import pytest
 from mcp import Client
-from pylibrelinkup import PyLibreLinkUp
 
 from librelinkup_mcp import server
 from librelinkup_mcp.config import load_settings
@@ -21,10 +20,7 @@ pytestmark = [
 
 async def test_live_list_patients_and_current_reading():
     settings = load_settings()
-    client = PyLibreLinkUp(
-        email=settings.email, password=settings.password, api_url=settings.region
-    )
-    server.set_service(GlucoseService(client))
+    server.set_service(GlucoseService(server.build_client(settings)))
     try:
         async with Client(server.mcp) as mcp_client:
             patients = await mcp_client.call_tool("list_patients", {})

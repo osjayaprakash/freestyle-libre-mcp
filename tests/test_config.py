@@ -1,7 +1,7 @@
 import pytest
-from pylibrelinkup import APIUrl
 
 from librelinkup_mcp.config import ConfigError, load_settings
+from librelinkup_mcp.core import Region
 
 CREDS = {"LIBRELINKUP_EMAIL": "me@example.com", "LIBRELINKUP_PASSWORD": "s3cret"}
 
@@ -10,7 +10,7 @@ def test_minimal_env_uses_defaults():
     settings = load_settings(CREDS)
     assert settings.email == "me@example.com"
     assert settings.password == "s3cret"
-    assert settings.region is APIUrl.US
+    assert settings.region is Region.US
     assert settings.langfuse_enabled is False
     assert settings.langfuse_capture_data is False
 
@@ -36,7 +36,7 @@ def test_blank_email_counts_as_missing():
 
 
 @pytest.mark.parametrize(
-    "raw, expected", [("eu", APIUrl.EU), (" EU2 ", APIUrl.EU2), ("", APIUrl.US)]
+    "raw, expected", [("eu", Region.EU), (" EU2 ", Region.EU2), ("", Region.US)]
 )
 def test_region_is_case_insensitive_and_defaults_to_us(raw, expected):
     assert load_settings({**CREDS, "LIBRELINKUP_REGION": raw}).region is expected

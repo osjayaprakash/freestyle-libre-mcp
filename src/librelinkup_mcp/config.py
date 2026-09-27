@@ -6,7 +6,7 @@ import os
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 
-from pylibrelinkup import APIUrl
+from librelinkup_mcp.core.regions import Region
 
 _TRUTHY = {"true", "1", "yes"}
 
@@ -19,7 +19,7 @@ class ConfigError(Exception):
 class Settings:
     email: str
     password: str = field(repr=False)
-    region: APIUrl
+    region: Region
     langfuse_enabled: bool
     langfuse_capture_data: bool
 
@@ -40,9 +40,9 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
 
     region_name = env.get("LIBRELINKUP_REGION", "").strip() or "US"
     try:
-        region = APIUrl.from_string(region_name)
+        region = Region.from_name(region_name)
     except ValueError:
-        valid = ", ".join(member.name for member in APIUrl)
+        valid = ", ".join(member.name for member in Region)
         raise ConfigError(
             f"Invalid LIBRELINKUP_REGION {region_name!r}. Valid regions: {valid}"
         ) from None
